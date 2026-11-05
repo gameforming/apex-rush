@@ -1,11 +1,22 @@
+import { getTrackPose } from './track-layouts.js';
+
 export const RACE_DISTANCE = 2400;
 export const LAP_DISTANCE = 800;
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 export function roadCurve(distance, trackKey = 'coast') {
-  const trackScale = trackKey === 'mountain' ? 1.28 : trackKey === 'desert' ? 1.08 : 0.86;
-  return (Math.sin(distance * 0.00225) * 0.58 + Math.sin(distance * 0.0051 + 1.2) * 0.29) * trackScale;
+  // Corner demand follows the actual closed circuit shown in the top-down
+  // renderer. A short look-ahead measures how quickly the track heading turns.
+  const progress = ((distance % 800) + 800) % 800 / 800;
+  const before = getTrackPose(trackKey, progress - 0.004).tangent;
+  const after = getTrackPose(trackKey, progress + 0.004).tangent;
+  const a = Math.atan2(before.y, before.x);
+  const b = Math.atan2(after.y, after.x);
+  let delta = b - a;
+  while (delta > Math.PI) delta -= Math.PI * 2;
+  while (delta < -Math.PI) delta += Math.PI * 2;
+  return clamp(delta * 3.2, -1, 1);
 }
 
 export function createRaceState() {

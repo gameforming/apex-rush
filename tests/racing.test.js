@@ -50,3 +50,13 @@ test('race physics responds to throttle, braking and steering and ends at the fi
   assert.equal(finish.finished, true);
   assert.equal(finish.distance, RACE_DISTANCE);
 });
+
+test('track curvature comes from the closed top-down circuit, not a scrolling road wave', async () => {
+  const { roadCurve } = await import('../src/racing/physics.js');
+  const coastStart = roadCurve(0, 'coast');
+  const coastCorner = roadCurve(215, 'coast');
+  const mountainCorner = roadCurve(215, 'mountain');
+  assert.ok(Number.isFinite(coastStart));
+  assert.ok(Math.abs(coastCorner) > 0.01);
+  assert.notEqual(coastCorner, mountainCorner);
+});

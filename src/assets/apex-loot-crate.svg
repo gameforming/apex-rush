@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="440" viewBox="0 0 520 440" fill="none">
+  <defs>
+    <linearGradient id="front" x1="104" y1="118" x2="270" y2="376" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF9858"/><stop offset=".42" stop-color="#D94D2D"/><stop offset="1" stop-color="#67251F"/>
+    </linearGradient>
+    <linearGradient id="side" x1="268" y1="150" x2="426" y2="370" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A43C2B"/><stop offset="1" stop-color="#361B20"/>
+    </linearGradient>
+    <linearGradient id="top" x1="95" y1="85" x2="380" y2="188" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFC17B"/><stop offset=".48" stop-color="#E56B3D"/><stop offset="1" stop-color="#873023"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#FFF0C5"/><stop offset=".38" stop-color="#B8A17A"/><stop offset="1" stop-color="#554A3D"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="165" y1="185" x2="300" y2="330" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE6A6"/><stop offset="1" stop-color="#FF6B38"/>
+    </linearGradient>
+    <filter id="shadow" x="20" y="15" width="490" height="415" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="17"/>
+    </filter>
+    <filter id="shine" x="120" y="150" width="280" height="245" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+  </defs>
+  <ellipse cx="262" cy="376" rx="190" ry="37" fill="#000" opacity=".42" filter="url(#shadow)"/>
+  <ellipse cx="254" cy="310" rx="120" ry="96" fill="#FF733D" opacity=".2" filter="url(#shine)"/>
+
+  <!-- Reinforced top lid -->
+  <path d="M88 112 263 34 438 117 259 205 88 112Z" fill="url(#top)" stroke="#51251E" stroke-width="9" stroke-linejoin="round"/>
+  <path d="m112 111 151-65 150 72-153 74-148-81Z" stroke="#FFD39A" stroke-opacity=".72" stroke-width="4"/>
+  <path d="m151 105 109-48 105 51-108 53-106-56Z" fill="#50251F" fill-opacity=".52" stroke="#F2A263" stroke-width="4"/>
+  <path d="m218 74 44-20 45 21-46 22-43-23Z" fill="#F8BD78" stroke="#4B2621" stroke-width="5"/>
+  <path d="m239 76 23-10 24 11-24 12-23-13Z" fill="#17222A" stroke="#F9D9A2" stroke-width="3"/>
+
+  <!-- Front and right side panels -->
+  <path d="m88 112 171 93v190L88 300V112Z" fill="url(#front)" stroke="#4C211D" stroke-width="10" stroke-linejoin="round"/>
+  <path d="m259 205 179-88v183l-179 95V205Z" fill="url(#side)" stroke="#421E1C" stroke-width="10" stroke-linejoin="round"/>
+
+  <!-- Heavy corner armor -->
+  <path d="m97 119 22 12v166l-22-12V119Zm151 84 22 11v173l-22-12V203Z" fill="url(#metal)" stroke="#382B23" stroke-width="5"/>
+  <path d="m267 208 20-10v174l-20 10V208Zm160-79 19-10v179l-19 10V129Z" fill="url(#metal)" stroke="#302720" stroke-width="5"/>
+  <path d="m94 111 169 91 176-87" stroke="#FFE2AE" stroke-width="7" stroke-linecap="round" opacity=".7"/>
+  <path d="m104 295 153 84 171-89" stroke="#26191A" stroke-width="8" opacity=".55"/>
+
+  <!-- Front ribbing -->
+  <path d="m132 145 0 142m16-134 0 145m98-99v151" stroke="#5C2721" stroke-opacity=".5" stroke-width="5"/>
+  <path d="m288 218 0 150m17-160v151m96-198v157" stroke="#25191B" stroke-opacity=".38" stroke-width="5"/>
+  <path d="m109 167 137 75m-137-45 137 75m-137-45 137 75" stroke="#F99B5E" stroke-opacity=".27" stroke-width="3"/>
+
+  <!-- Illuminated APEX badge -->
+  <path d="m128 184 105 57v94l-105-58v-93Z" fill="#291C20" stroke="#F5B36E" stroke-width="5"/>
+  <path d="m146 203 70 38v58l-70-38v-58Z" fill="#17232A" stroke="#E86B3D" stroke-width="3"/>
+  <path d="m157 251 25-38 26 66-18-10-8-18-8 9-17-9Z" fill="url(#glow)"/>
+  <path d="m190 272 20 11" stroke="#FFE1A0" stroke-width="5" stroke-linecap="round"/>
+  <text x="180" y="311" fill="#FFE5B2" font-family="Arial,sans-serif" font-size="12" font-weight="900" letter-spacing="2" text-anchor="middle">APEX / 07</text>
+
+  <!-- Side serial plate and warning stripes -->
+  <path d="m310 235 91-45v81l-91 46v-82Z" fill="#1A252B" stroke="#D69B67" stroke-width="4"/>
+  <text x="356" y="239" fill="#F7C98D" font-family="Arial,sans-serif" font-size="12" font-weight="900" letter-spacing="2" text-anchor="middle">RUSH</text>
+  <path d="m322 254 66-33m-66 49 66-33m-66 49 66-33" stroke="#F27642" stroke-width="5" stroke-linecap="square"/>
+  <path d="m294 332 111-58" stroke="#F2B36B" stroke-width="4" stroke-dasharray="9 7"/>
+
+  <!-- Bolts and latches -->
+  <g fill="#EAD5AD" stroke="#4A3830" stroke-width="3">
+    <circle cx="110" cy="137" r="7"/><circle cx="110" cy="278" r="7"/><circle cx="242" cy="211" r="7"/><circle cx="242" cy="364" r="7"/>
+    <circle cx="281" cy="211" r="7"/><circle cx="281" cy="365" r="7"/><circle cx="425" cy="129" r="7"/><circle cx="425" cy="283" r="7"/>
+  </g>
+  <g stroke="#54483A" stroke-width="2" stroke-linecap="round">
+    <path d="m106 137 8 0m-4-4v8m-4 137h8m-4-4v8m128-65h8m-4-4v8m-4 145h8m-4-4v8m35-154h8m-4-4v8m-4 154h8m-4-4v8m136-240h8m-4-4v8m-4 149h8m-4-4v8"/>
+  </g>
+
+  <!-- Gold base rails -->
+  <path d="m88 296 171 94 179-95v22l-179 99-171-95v-25Z" fill="#282A2A" stroke="#E6B778" stroke-width="4"/>
+  <path d="m103 312 156 86 162-86" stroke="#F58A4C" stroke-width="4" stroke-dasharray="13 10"/>
+</svg>

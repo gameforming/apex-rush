@@ -18,6 +18,8 @@ import {
 } from './game.js';
 import { isSupabaseConfigured } from './supabase.js';
 import DrivingRace from './racing/DrivingRace.jsx';
+import TrackMiniMap from './racing/TrackMiniMap.jsx';
+import crateImage from './assets/apex-loot-crate.svg';
 import { getRaceSocketUrl } from './racing/network.js';
 
 const NAV_ITEMS = [
@@ -372,7 +374,7 @@ function App() {
             <div className="mini-progress"><span style={{ width: `${Math.min(100, level.progress)}%` }} /></div>
             <div className="mini-card-foot"><span>LEVEL {level.level}</span><span>{level.current}/500 XP</span></div>
           </div>
-          <div className="sidebar-footer">APEX RUSH <span>BUILD 0.2.0</span></div>
+          <div className="sidebar-footer">APEX RUSH <span>BUILD 0.2.2</span></div>
         </div>
       </aside>
 
@@ -424,7 +426,7 @@ function App() {
             <section className="track-grid">
               {TRACKS.map((track, index) => (
                 <button key={track.key} className={`track-card track-${track.key} ${selectedTrack === track.key ? 'selected' : ''}`} onClick={() => setSelectedTrack(track.key)}>
-                  <div className="track-art"><div className="track-sun" /><div className="track-horizon" /><div className="track-road" /><span className="track-number">0{index + 1}</span><span className="track-symbol">{track.icon}</span></div>
+                  <div className="track-art"><TrackMiniMap trackKey={track.key} label={`${track.name} circuit`} /><span className="track-number">0{index + 1}</span><span className="track-symbol">{track.icon}</span><span className="track-art-label">TOP-DOWN CIRCUIT</span></div>
                   <div className="track-info"><div><h3>{track.name}</h3><p>{track.description}</p></div><span className="track-radio">{selectedTrack === track.key ? '✓' : ''}</span></div>
                   <div className="track-meta"><span>{track.length}</span><span>{track.label}</span><b>{track.difficulty}</b></div>
                 </button>
@@ -538,7 +540,7 @@ function App() {
         {tab === 'crates' && (
           <>
             <section className="page-heading"><div><div className="eyebrow"><span className="eyebrow-line" />MYSTERY REWARDS</div><h1>LOOT <em>CRATES</em></h1><p>Race voor crates en ontdek credits of zeldzame banden.</p></div><div className="crate-count"><strong>{String(game.crates).padStart(2, '0')}</strong><small>CRATES BESCHIKBAAR</small></div></section>
-            <section className="crate-showcase"><div className="crate-glow" /><div className="crate-box"><div className="crate-top" /><div className="crate-front"><span>APX</span><i>✦</i></div><div className="crate-side" /></div><div className="crate-spark spark-a">✦</div><div className="crate-spark spark-b">✧</div><div className="crate-showcase-copy"><div className="eyebrow">RACE. EARN. UNLOCK.</div><h2>WHAT'S <em>INSIDE?</em></h2><p>Elke crate bevat een verrassingsbeloning. Hoe beter je racet, hoe groter de kans dat je er eentje wint.</p><Button onClick={openCrate} disabled={game.crates < 1}>OPEN EEN CRATE <span>→</span></Button><small>{game.crates > 0 ? `${game.crates} crate${game.crates === 1 ? '' : 's'} klaar om te openen` : 'VERDIEN CRATES DOOR TE RACEN'}</small></div></section>
+            <section className="crate-showcase"><div className="crate-stage"><div className="crate-glow" /><div className="crate-stage-grid" /><div className="crate-orbit crate-orbit-one" /><div className="crate-orbit crate-orbit-two" /><img className="crate-render" src={crateImage} alt="Apex Rush loot crate" /><span className="crate-stage-tag">APX / SUPPLY DROP 07</span></div><div className="crate-showcase-copy"><div className="eyebrow">RACE. EARN. UNLOCK.</div><h2>WHAT'S <em>INSIDE?</em></h2><p>Elke crate bevat een verrassingsbeloning. Hoe beter je racet, hoe groter de kans dat je er eentje wint.</p><Button onClick={openCrate} disabled={game.crates < 1}>OPEN EEN CRATE <span>→</span></Button><small>{game.crates > 0 ? `${game.crates} crate${game.crates === 1 ? '' : 's'} klaar om te openen` : 'VERDIEN CRATES DOOR TE RACEN'}</small></div></section>
             <div className="section-title-row"><div><div className="eyebrow">POSSIBLE DROPS</div><h2>CRATE <em>POOL</em></h2></div><span className="muted-label">WILLEKEURIGE BELONING</span></div>
             <section className="crate-reward-grid">
               {[

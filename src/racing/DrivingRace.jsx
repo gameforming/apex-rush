@@ -1,26 +1,138 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { LAP_DISTANCE, RACE_DISTANCE, createRaceState, roadCurve, stepRacePhysics } from './physics.js';
+import { LAP_DISTANCE, RACE_DISTANCE, createRaceState, stepRacePhysics } from './physics.js';
+import { TRACK_HEIGHT, TRACK_WIDTH, getTrackPose, getTrackSamples } from './track-layouts.js';
 
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+const lapProgress = (distance) => ((distance % LAP_DISTANCE) + LAP_DISTANCE) % LAP_DISTANCE / LAP_DISTANCE;
 
-function drawCar(ctx, x, y, scale, color, angle = 0) {
+function traceCircuit(ctx, samples) {
+  ctx.beginPath();
+  samples.forEach((point, index) => {
+    if (index === 0) ctx.moveTo(point.x, point.y);
+    else ctx.lineTo(point.x, point.y);
+  });
+  ctx.closePath();
+}
+
+function drawCar(ctx, x, y, angle, color, accent = '#f4f0e7', scale = 1) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
   ctx.scale(scale, scale);
-  ctx.fillStyle = 'rgba(0,0,0,.42)';
-  ctx.beginPath(); ctx.ellipse(0, 9, 24, 39, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#080d12';
-  ctx.fillRect(-22, -24, 7, 17); ctx.fillRect(15, -24, 7, 17);
-  ctx.fillRect(-22, 10, 7, 17); ctx.fillRect(15, 10, 7, 17);
-  ctx.fillStyle = color;
+
+  // Soft shadow, slick tyres and a compact top-down touring-car silhouette.
+  ctx.fillStyle = 'rgba(0,0,0,.38)';
+  ctx.beginPath(); ctx.ellipse(2, 5, 19, 31, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#080c10';
+  [[-15, -20], [9, -20], [-15, 10], [9, 10]].forEach(([wx, wy]) => {
+    ctx.beginPath(); ctx.roundRect(wx, wy, 7, 15, 2); ctx.fill();
+    ctx.fillStyle = '#59636a'; ctx.fillRect(wx + 2, wy + 3, 3, 8);
+    ctx.fillStyle = '#080c10';
+  });
+
+  ctx.fillStyle = '#111920';
   ctx.beginPath();
-  ctx.moveTo(-15, 33); ctx.lineTo(-19, 16); ctx.lineTo(-17, -19); ctx.lineTo(-11, -34);
-  ctx.quadraticCurveTo(0, -41, 11, -34); ctx.lineTo(17, -19); ctx.lineTo(19, 16); ctx.lineTo(15, 33); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#182631';
-  ctx.beginPath(); ctx.moveTo(-12, -10); ctx.lineTo(-9, -27); ctx.quadraticCurveTo(0, -32, 9, -27); ctx.lineTo(12, -10); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#9baab4'; ctx.fillRect(-12, 19, 24, 3);
-  ctx.fillStyle = '#ffe2a0'; ctx.fillRect(-14, -34, 7, 3); ctx.fillRect(7, -34, 7, 3);
+  ctx.moveTo(-11, 28); ctx.lineTo(-15, 17); ctx.lineTo(-15, -17);
+  ctx.lineTo(-10, -28); ctx.quadraticCurveTo(0, -33, 10, -28);
+  ctx.lineTo(15, -17); ctx.lineTo(15, 17); ctx.lineTo(11, 28);
+  ctx.quadraticCurveTo(0, 33, -11, 28); ctx.fill();
+
+  const body = ctx.createLinearGradient(-15, 0, 15, 0);
+  body.addColorStop(0, '#222b32'); body.addColorStop(.25, color); body.addColorStop(.78, color); body.addColorStop(1, '#1d252b');
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.moveTo(-10, 27); ctx.lineTo(-13, 17); ctx.lineTo(-12, -17);
+  ctx.lineTo(-8, -26); ctx.quadraticCurveTo(0, -30, 8, -26);
+  ctx.lineTo(12, -17); ctx.lineTo(13, 17); ctx.lineTo(10, 27);
+  ctx.quadraticCurveTo(0, 31, -10, 27); ctx.fill();
+
+  // Roof, windshield, rear glass and racing stripe.
+  ctx.fillStyle = '#101d29';
+  ctx.beginPath(); ctx.moveTo(-9, -6); ctx.lineTo(-7, -20); ctx.quadraticCurveTo(0, -24, 7, -20); ctx.lineTo(9, -6); ctx.lineTo(7, 8); ctx.lineTo(-7, 8); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(150,190,208,.58)';
+  ctx.beginPath(); ctx.moveTo(-7, -9); ctx.lineTo(-6, -18); ctx.quadraticCurveTo(0, -21, 6, -18); ctx.lineTo(7, -9); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(9,18,26,.82)';
+  ctx.beginPath(); ctx.moveTo(-6, 11); ctx.lineTo(6, 11); ctx.lineTo(5, 19); ctx.lineTo(-5, 19); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = accent; ctx.fillRect(-2, -24, 4, 42);
+  ctx.fillStyle = '#fff4c9'; ctx.fillRect(-10, -28, 5, 2); ctx.fillRect(5, -28, 5, 2);
+  ctx.fillStyle = '#ff443e'; ctx.fillRect(-10, 26, 5, 2); ctx.fillRect(5, 26, 5, 2);
+  ctx.restore();
+}
+
+function drawGrass(ctx, trackKey) {
+  const colors = trackKey === 'desert'
+    ? ['#8b704d', '#977952', '#806743']
+    : trackKey === 'mountain'
+      ? ['#52634b', '#5d704f', '#455942']
+      : ['#31583f', '#386346', '#2d513a'];
+  ctx.fillStyle = colors[0]; ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
+  const band = ctx.createLinearGradient(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
+  band.addColorStop(0, 'rgba(255,255,255,.045)'); band.addColorStop(.5, 'rgba(0,0,0,.04)'); band.addColorStop(1, 'rgba(255,255,255,.025)');
+  ctx.fillStyle = band; ctx.fillRect(0, 0, TRACK_WIDTH, TRACK_HEIGHT);
+  for (let row = 0; row < 13; row += 1) {
+    for (let col = 0; col < 28; col += 1) {
+      const seed = (row * 73 + col * 37 + (row * col * 13)) % 101;
+      const x = col * 52 + (row % 2) * 19 + seed * .17;
+      const y = row * 48 + (seed % 17);
+      ctx.fillStyle = seed % 3 === 0 ? 'rgba(255,255,255,.045)' : 'rgba(9,22,15,.075)';
+      ctx.beginPath(); ctx.arc(x, y, 1 + (seed % 3) * .45, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.strokeStyle = 'rgba(225,235,204,.06)'; ctx.lineWidth = 1;
+  for (let x = 20; x < TRACK_WIDTH; x += 110) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 55, TRACK_HEIGHT); ctx.stroke();
+  }
+}
+
+function drawTrackside(ctx, trackKey) {
+  const treePositions = trackKey === 'desert'
+    ? [[45, 75], [55, 360], [300, 75], [570, 70], [1300, 90], [1335, 470], [730, 585], [60, 550]]
+    : trackKey === 'mountain'
+      ? [[45, 65], [45, 300], [320, 65], [620, 80], [1300, 90], [1340, 320], [1280, 540], [500, 580]]
+      : [[45, 70], [55, 300], [360, 65], [620, 65], [1295, 75], [1345, 300], [1300, 520], [520, 585]];
+  treePositions.forEach(([x, y], index) => {
+    ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(x + 4, y + 7, 18, 12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = trackKey === 'desert' ? '#5d4b32' : '#1c3929';
+    ctx.beginPath(); ctx.arc(x, y, 12 + (index % 3) * 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = trackKey === 'desert' ? '#a08b62' : '#52764a';
+    ctx.beginPath(); ctx.arc(x - 4, y - 4, 7 + (index % 2) * 2, 0, Math.PI * 2); ctx.fill();
+  });
+
+  // Pit building and pit boxes alongside the start/finish straight.
+  ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(190, 30, 325, 78);
+  ctx.fillStyle = '#c8c8bf'; ctx.fillRect(190, 25, 325, 70);
+  ctx.fillStyle = '#65727a'; ctx.fillRect(190, 25, 325, 12);
+  for (let i = 0; i < 8; i += 1) {
+    const x = 202 + i * 38;
+    ctx.fillStyle = '#26343d'; ctx.fillRect(x, 48, 30, 31);
+    ctx.fillStyle = i % 2 ? '#d7ddd9' : '#e16a45'; ctx.fillRect(x + 4, 53, 22, 3);
+    ctx.fillStyle = '#0e151b'; ctx.fillRect(x + 4, 62, 22, 16);
+  }
+  ctx.fillStyle = '#1b252c'; ctx.fillRect(190, 91, 325, 6);
+  ctx.fillStyle = 'rgba(242,246,232,.7)'; ctx.font = 'bold 9px Arial'; ctx.fillText('APEX RUSH / PIT LANE', 202, 18);
+
+  // Grandstand opposite the infield.
+  ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(785, 28, 190, 45);
+  ctx.fillStyle = '#333e46'; ctx.fillRect(785, 23, 190, 40);
+  for (let row = 0; row < 3; row += 1) {
+    ctx.fillStyle = row % 2 ? '#87939a' : '#b5b9b2';
+    ctx.fillRect(794, 29 + row * 9, 171, 5);
+  }
+  ctx.fillStyle = '#202a31'; ctx.fillRect(780, 62, 200, 8);
+}
+
+function drawStartFinish(ctx, pose) {
+  ctx.save();
+  ctx.translate(pose.x, pose.y);
+  ctx.rotate(pose.angle);
+  const stripeCount = 14;
+  const stripeWidth = 84 / stripeCount;
+  for (let index = 0; index < stripeCount; index += 1) {
+    ctx.fillStyle = index % 2 ? '#f1eee3' : '#151d23';
+    ctx.fillRect(-42 + index * stripeWidth, -6, stripeWidth, 12);
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1;
+  ctx.strokeRect(-42, -6, 84, 12);
   ctx.restore();
 }
 
@@ -33,86 +145,74 @@ function drawScene(canvas, state, trackKey, speed, elapsed, otherPlayers = [], p
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const w = rect.width; const h = rect.height;
-  const horizon = h * 0.31;
-  const palette = trackKey === 'desert'
-    ? { sky: '#bd8a61', far: '#745c48', near: '#454238', road: '#353a3d', curb: '#e0b989' }
-    : trackKey === 'mountain'
-      ? { sky: '#657e82', far: '#344c4c', near: '#253936', road: '#343b40', curb: '#d0d5cb' }
-      : { sky: '#63818c', far: '#39565b', near: '#294449', road: '#353d43', curb: '#d9d9ce' };
-  const sky = ctx.createLinearGradient(0, 0, 0, horizon);
-  sky.addColorStop(0, palette.sky); sky.addColorStop(1, '#1e3036');
-  ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = palette.far;
-  ctx.beginPath(); ctx.moveTo(0, horizon + 25); ctx.lineTo(w * .12, horizon - 20); ctx.lineTo(w * .25, horizon + 12); ctx.lineTo(w * .42, horizon - 42); ctx.lineTo(w * .56, horizon + 8); ctx.lineTo(w * .76, horizon - 25); ctx.lineTo(w, horizon + 12); ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.fill();
-  ctx.fillStyle = palette.near; ctx.fillRect(0, horizon + 22, w, h - horizon);
+  const theme = trackKey === 'desert' ? '#806746' : trackKey === 'mountain' ? '#4e604b' : '#31583f';
+  ctx.fillStyle = theme; ctx.fillRect(0, 0, w, h);
 
-  const segments = 70;
-  const road = [];
-  for (let i = 0; i <= segments; i += 1) {
-    const depth = i / segments;
-    const perspective = depth ** 1.55;
-    const worldAhead = state.distance + (1 - depth) * 310;
-    const curve = roadCurve(worldAhead, trackKey);
-    const center = w / 2 + curve * (1 - depth) * w * .48 - state.lane * w * .05 * depth;
-    const half = 7 + perspective * w * .43;
-    const y = horizon + depth * (h - horizon + 25);
-    road.push({ center, half, y, depth, perspective });
-  }
-  for (let i = 0; i < segments; i += 1) {
-    const a = road[i]; const b = road[i + 1];
-    ctx.fillStyle = (Math.floor((state.distance / 22) + i / 3) % 2) ? '#3d4647' : '#35403f';
-    ctx.beginPath(); ctx.moveTo(0, a.y); ctx.lineTo(w, a.y); ctx.lineTo(w, b.y); ctx.lineTo(0, b.y); ctx.fill();
-    ctx.fillStyle = '#b6b5a4';
-    ctx.beginPath(); ctx.moveTo(a.center - a.half - 7 * a.perspective, a.y); ctx.lineTo(a.center - a.half, a.y); ctx.lineTo(b.center - b.half, b.y); ctx.lineTo(b.center - b.half - 7 * b.perspective, b.y); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(a.center + a.half, a.y); ctx.lineTo(a.center + a.half + 7 * a.perspective, a.y); ctx.lineTo(b.center + b.half + 7 * b.perspective, b.y); ctx.lineTo(b.center + b.half, b.y); ctx.fill();
-    ctx.fillStyle = palette.road;
-    ctx.beginPath(); ctx.moveTo(a.center - a.half, a.y); ctx.lineTo(a.center + a.half, a.y); ctx.lineTo(b.center + b.half, b.y); ctx.lineTo(b.center - b.half, b.y); ctx.fill();
-    if (Math.floor((state.distance / 34) + i / 4) % 2 === 0) {
-      const markWidth = 2 + b.perspective * 5;
-      ctx.fillStyle = 'rgba(232,235,222,.58)';
-      ctx.beginPath(); ctx.moveTo(a.center - markWidth / 2, a.y); ctx.lineTo(a.center + markWidth / 2, a.y); ctx.lineTo(b.center + markWidth / 2, b.y); ctx.lineTo(b.center - markWidth / 2, b.y); ctx.fill();
-    }
-  }
-  // Track-side boards and approaching traffic give the driver useful visual depth.
-  for (let i = 0; i < 7; i += 1) {
-    const depth = ((i / 7 + (state.distance % 120) / 120) % 1);
-    const point = road[Math.min(segments, Math.floor(depth * segments))];
-    if (!point) continue;
-    const side = i % 2 ? -1 : 1;
-    const x = point.center + side * (point.half + 18 * point.perspective + 6);
-    const y = point.y;
-    const size = 3 + point.perspective * 14;
-    ctx.fillStyle = '#d8ddd7'; ctx.fillRect(x - size / 2, y - size * 2, size, size * 2);
-    ctx.fillStyle = '#ff713d'; ctx.fillRect(x - size / 2, y - size * 2, size, size * .55);
-  }
-  const playerCurve = roadCurve(state.distance, trackKey);
-  const rivals = otherPlayers.length ? otherPlayers.filter((player) => player.id !== playerId) : [
-    { id: 'ai-1', distance: state.distance + 210 + Math.sin(elapsed * .42) * 38, lane: -.34 },
-    { id: 'ai-2', distance: state.distance - 115 + Math.sin(elapsed * .31 + 1) * 24, lane: .32 },
-  ];
-  rivals.forEach((rival, index) => {
-    const delta = (rival.distance || 0) - state.distance;
-    if (delta < -300 || delta > 460) return;
-    const perspective = clamp(1 - Math.max(0, delta) / 480, .15, 1);
-    const y = h * .79 - delta * .47;
-    const curveAhead = roadCurve(state.distance + delta, trackKey);
-    const x = w / 2 + curveAhead * w * .23 + (rival.lane || 0) * w * .16;
-    drawCar(ctx, x, clamp(y, horizon + 22, h * .78), clamp(w / 560, .72, 1.22) * (.28 + perspective * .38), index % 2 ? '#4e9acb' : '#aeb9bf');
+  const scale = Math.min((w - 24) / TRACK_WIDTH, (h - 20) / TRACK_HEIGHT);
+  const offsetX = (w - TRACK_WIDTH * scale) / 2;
+  const offsetY = (h - TRACK_HEIGHT * scale) / 2;
+  ctx.save();
+  ctx.translate(offsetX, offsetY);
+  ctx.scale(scale, scale);
+
+  drawGrass(ctx, trackKey);
+  drawTrackside(ctx, trackKey);
+  const { samples } = getTrackSamples(trackKey);
+
+  traceCircuit(ctx, samples);
+  ctx.strokeStyle = 'rgba(0,0,0,.28)'; ctx.lineWidth = 118; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+  traceCircuit(ctx, samples);
+  ctx.strokeStyle = '#d8d9d0'; ctx.lineWidth = 104; ctx.lineCap = 'butt'; ctx.stroke();
+  traceCircuit(ctx, samples);
+  ctx.strokeStyle = '#d84f43'; ctx.lineWidth = 104; ctx.setLineDash([25, 25]); ctx.lineDashOffset = elapsed * -11; ctx.stroke();
+  ctx.setLineDash([]);
+  traceCircuit(ctx, samples);
+  ctx.strokeStyle = '#30383d'; ctx.lineWidth = 84; ctx.lineCap = 'round'; ctx.stroke();
+  traceCircuit(ctx, samples);
+  ctx.strokeStyle = 'rgba(15,22,27,.82)'; ctx.lineWidth = 2; ctx.stroke();
+  traceCircuit(ctx, samples);
+  ctx.strokeStyle = 'rgba(225,230,222,.42)'; ctx.lineWidth = 2; ctx.setLineDash([4, 21]); ctx.stroke(); ctx.setLineDash([]);
+
+  // Corner boards and small marshal posts give the circuit scale and identity.
+  const boardPositions = [[500, 325, '03'], [875, 105, '05'], [1095, 445, '07'], [650, 555, '09'], [190, 365, '11']];
+  boardPositions.forEach(([x, y, label]) => {
+    ctx.fillStyle = 'rgba(11,18,22,.78)'; ctx.fillRect(x - 13, y - 11, 26, 22);
+    ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.strokeRect(x - 13, y - 11, 26, 22);
+    ctx.fillStyle = '#f5eee1'; ctx.font = 'bold 11px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, x, y);
   });
-  const playerX = w / 2 + state.lane * w * .19;
-  drawCar(ctx, playerX, h * .79, clamp(w / 560, .72, 1.22), '#f36b3d', clamp(-playerCurve * .22 - state.lateralVelocity * .1, -.22, .22));
-  const speedLines = clamp(speed / 235, 0, 1);
-  if (speedLines > .68) {
-    ctx.strokeStyle = `rgba(255,255,255,${(speedLines - .68) * .18})`;
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 9; i += 1) {
-      const x = (i / 9) * w;
-      ctx.beginPath(); ctx.moveTo(x, h * .48); ctx.lineTo(x + (i - 4) * 8, h * .69); ctx.stroke();
-    }
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+
+  const startPose = getTrackPose(trackKey, 0);
+  drawStartFinish(ctx, startPose);
+
+  const rivals = otherPlayers.length
+    ? otherPlayers.filter((player) => player.id !== playerId)
+    : [
+      { id: 'ai-1', name: 'RIVAL 01', distance: state.distance + 175, lane: -.28 },
+      { id: 'ai-2', name: 'RIVAL 02', distance: state.distance - 115, lane: .3 },
+      { id: 'ai-3', name: 'RIVAL 03', distance: state.distance + 355, lane: .12 },
+    ];
+  const rivalColors = ['#4b9dd2', '#d6d9dd', '#b18ad9', '#e6b64f'];
+  rivals.forEach((rival, index) => {
+    const progress = lapProgress(rival.distance || 0);
+    const pose = getTrackPose(trackKey, progress, (rival.lane || 0) * 38);
+    drawCar(ctx, pose.x, pose.y, pose.angle, rivalColors[index % rivalColors.length], '#e7edf0', .93);
+  });
+
+  const playerPose = getTrackPose(trackKey, lapProgress(state.distance), state.lane * 52);
+  drawCar(ctx, playerPose.x, playerPose.y, playerPose.angle, '#ff713f', '#ffe5a6', 1.08);
+  ctx.restore();
+
+  // A small map legend is intentionally outside the transformed world.
+  ctx.fillStyle = 'rgba(8,14,18,.72)'; ctx.fillRect(w - 126, 12, 112, 28);
+  ctx.fillStyle = '#ff7548'; ctx.beginPath(); ctx.arc(w - 114, 26, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#d6dde0'; ctx.font = 'bold 8px Arial'; ctx.fillText('YOU', w - 104, 29);
+  ctx.fillStyle = '#7daed0'; ctx.beginPath(); ctx.arc(w - 69, 26, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#d6dde0'; ctx.fillText('RIVALS', w - 59, 29);
+  if (speed > 190) {
+    ctx.fillStyle = `rgba(255,255,255,${clamp((speed - 190) / 700, .03, .12)})`;
+    ctx.fillRect(0, 0, w, h);
   }
-  const vignette = ctx.createRadialGradient(w / 2, h / 2, h * .1, w / 2, h / 2, h * .75);
-  vignette.addColorStop(.55, 'rgba(0,0,0,0)'); vignette.addColorStop(1, 'rgba(0,0,0,.35)');
-  ctx.fillStyle = vignette; ctx.fillRect(0, 0, w, h);
 }
 
 export default function DrivingRace({ car, performance, trackKey, trackName, onFinish, onExit, multiplayer = false, multiplayerSnapshot = [], playerId, onControls }) {

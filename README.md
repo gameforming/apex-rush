@@ -1,6 +1,6 @@
 # Apex Rush — Racing Club
 
-Een browser-based racing game met een donker motorsport-dashboard, bestuurbare 2D-races, auto-afstelling en een Node/WebSocket-raceserver. De lokale game-save wordt in `localStorage` bewaard.
+Een browser-based racing game met een donker motorsport-dashboard, bestuurbare top-down circuitraces, auto-afstelling en een Node/WebSocket-raceserver. De lokale game-save wordt in `localStorage` bewaard.
 
 ## Installatiehandleiding
 
@@ -8,6 +8,7 @@ Voor de volledige klik-voor-klik installatie: open [HANDLEIDING-NL.md](HANDLEIDI
 
 ## Wat zit erin?
 
+- **Top-down circuits:** drie volledige gesloten circuits (Coastal Run, Mountain Pass en Dust Valley) met start/finish, rood-witte kerbs, pitstraat, tribune, baanmarkeringen en tegenstanders die zichtbaar over dezelfde route rijden. De trackselectie gebruikt dezelfde circuitgeometrie als de race.
 - **Driving mode:** bestuur de auto live met W/A/S/D of pijltjestoetsen. Op mobiel staan stuur-, gas- en remknoppen in beeld. Drie ronden, snelheid, afstand, rondeteller en rijtijd worden tijdens de race bijgehouden.
 - **Garage:** vijf auto's met eigen eigenschappen en lokale SVG-afbeeldingen.
 - **Werkplaats:** motor, versnellingsbak, remmen, ophanging en aerodynamica. Upgrades worden per auto opgeslagen. De motor kost bijvoorbeeld 2.000 credits voor stage 1 en 7.000 voor stage 2.
@@ -16,7 +17,7 @@ Voor de volledige klik-voor-klik installatie: open [HANDLEIDING-NL.md](HANDLEIDI
 - **Multiplayer:** Node/WebSocket-server met private roomcodes, maximaal vier spelers, server-side race-state, stuurinput, afstand, finishvolgorde en race-resultaten.
 - **Banden:** Street Basic, Sport Medium (Rare), Racing Soft (Epic) en All-Terrain X (Legendary). Een shop-pack geeft drie racesets.
 - **Hourly shop:** drie aanbiedingen met een voorraad die ieder heel uur opnieuw wordt gegenereerd.
-- **Crates:** verdien crates met races en open ze voor credits of banden.
+- **Crates:** verdien crates met races en open ze voor credits of banden. De crate heeft nu een eigen lokale, gedetailleerde SVG-render.
 - **Marktplaats-scherm:** de gebruikersinterface en database-migratie voor speler-naar-speler-handel zijn voorbereid. De live handel is nog niet geactiveerd.
 
 ## Lokaal starten
@@ -45,7 +46,7 @@ De game werkt zonder Supabase-configuratie. Voortgang wordt lokaal in de browser
 
 ## Afbeeldingen
 
-Alle game-afbeeldingen zijn lokale SVG-bestanden in `public/assets/`. Ze worden door de app geladen vanaf `/assets/...`; er wordt geen externe image-CDN gebruikt. De productiebuild kopieert deze bestanden naar `dist/assets/`.
+Alle game-afbeeldingen zijn lokale SVG-bestanden in de repository. Auto-assets staan onder `public/assets/cars/`; de Apex loot crate staat onder `src/assets/` en wordt door Vite in de build opgenomen. Er worden geen externe image-URL’s of image-CDN’s gebruikt.
 
 ## GitHub → Render
 
@@ -64,6 +65,14 @@ Alle game-afbeeldingen zijn lokale SVG-bestanden in `public/assets/`. Ze worden 
 De bestaande migratie maakt spelersprofielen, wallets, auto's, bandenvoorraad en marktplaatsaanbiedingen aan. Markttransacties gebruiken beveiligde SQL RPC-functies en RLS.
 
 **Multiplayer-prototype:** de raceserver is autoriteit voor de race-tick, de afgelegde afstand en de finishvolgorde. De browser stuurt alleen gas/rem/stuurinput. De server begrenst de aangeleverde voertuigstats, maar verifieert de auto, upgrades en bandenvoorraad nog niet tegen een ingelogde Supabase-speler. Rooms worden voorlopig in het geheugen van het Node-proces bijgehouden; een herstart of redeploy beëindigt actieve rooms. Racebeloningen en inventaris worden ook nog lokaal bewaard. Verbind vóór publieke lancering Supabase Auth, laad speler-builds en bandenvoorraad server-side en schrijf resultaten atomair terug naar de database. Gebruik de WebSocket-server nog niet als volledig cheat-bestendig competitief systeem.
+
+## Update 0.2.2 — top-down circuits en crate-art
+
+- Vervangt het pseudo-3D wegbeeld door een volledig bovenaanzicht van een gesloten circuit.
+- Drie afzonderlijke circuitlayouts worden gedeeld door de raceweergave en de circuitkeuzekaarten.
+- Auto’s en tegenstanders bewegen langs de volledige baan; de start/finish, kerbs, pitstraat en baanmarkeringen zijn zichtbaar.
+- De bochtbelasting in de physics wordt uit de echte circuitgeometrie berekend.
+- De crate-showcase gebruikt een eigen lokale SVG-art asset.
 
 ## Tests
 

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="300" viewBox="0 0 720 300" fill="none">
+<defs><linearGradient id="b" x1="120" y1="60" x2="590" y2="250" gradientUnits="userSpaceOnUse"><stop stop-color="#D8E6AF"/><stop offset=".4" stop-color="#789B49"/><stop offset="1" stop-color="#3A5937"/></linearGradient><linearGradient id="g" x1="280" y1="75" x2="470" y2="165" gradientUnits="userSpaceOnUse"><stop stop-color="#DCEBD1" stop-opacity=".78"/><stop offset="1" stop-color="#263D37"/></linearGradient></defs>
+<ellipse cx="362" cy="256" rx="276" ry="21" fill="#03080C" fill-opacity=".7"/>
+<path d="m62 207 34-28 86-16 47-31 62-42q20-14 53-12l110 6q22 2 44 23l68 63 82 24q31 9 34 30l-11 17-61 6-26-3q-7-53-58-53t-61 54H258q-5-54-57-54t-58 52l-55-9q-24-5-26-27Z" fill="url(#b)" stroke="#D0E5A4" stroke-width="3"/>
+<path d="m241 124 56-45q15-12 37-11l112 6q18 1 32 15l51 57-131-8-157-14Z" fill="#1E332F" stroke="#C9DFA6" stroke-width="3"/><path d="m310 81-58 45 121 13V76l-63 5Z" fill="url(#g)"/><path d="m386 76 62 3q18 1 32 15l48 52-118-7-30-63Z" fill="url(#g)"/>
+<path d="m84 185 103-21 56-35 32 16-30 29-132 25-29-14Z" fill="#ECF4CA" fill-opacity=".35"/><path d="m84 201 111-28 127 12 179-1" stroke="#E7F2C8" stroke-opacity=".65" stroke-width="3"/>
+<path d="m100 169-7-35 17-8 12 39m458 4 11-33 17 12-5 31" fill="#3B4A38" stroke="#A7C27A" stroke-width="4"/><path d="m131 120 17-34 17 5 5 38m363 3 18-35 16 7-1 37" fill="#27352F" stroke="#BBCF8D" stroke-width="3"/>
+<path d="m73 199 54-8-6 29-45-3-3-18Z" fill="#DFF3B0"/><path d="m595 188 44 13-5 22-46-5 7-30Z" fill="#E0F0B0"/>
+<circle cx="200" cy="228" r="47" fill="#070D10" stroke="#536349" stroke-width="8"/><circle cx="200" cy="228" r="25" fill="#89958B" stroke="#28352E" stroke-width="6"/><circle cx="200" cy="228" r="8" fill="#DEE7D7"/>
+<circle cx="520" cy="228" r="47" fill="#070D10" stroke="#536349" stroke-width="8"/><circle cx="520" cy="228" r="25" fill="#89958B" stroke="#28352E" stroke-width="6"/><circle cx="520" cy="228" r="8" fill="#DEE7D7"/>
+<path d="m153 243-39 1m454-1 39 1" stroke="#27332D" stroke-width="8" stroke-linecap="round"/><path d="m266 190 18 23h147l17-22" stroke="#3C5D37" stroke-width="5"/><path d="m349 85 5 68" stroke="#E2E9D0" stroke-opacity=".45" stroke-width="5"/>
+</svg>

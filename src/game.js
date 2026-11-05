@@ -74,6 +74,13 @@ export const UPGRADE_PARTS = {
     descriptions: ['Sportveren', 'Coilover set', 'Adaptive race suspension'],
     detail: 'Meer grip en stabiliteit in bochten.',
   },
+  aero: {
+    name: 'Aerodynamica',
+    icon: '⌁',
+    costs: [2400, 7600, 18000],
+    descriptions: ['Front splitter', 'Race diffuser', 'Carbon aero package'],
+    detail: 'Meer downforce en bochtengrip; kost topsnelheid.',
+  },
 };
 
 export const CAR_CATALOG = [
@@ -96,7 +103,8 @@ export function createCar(key = 'starter', id = globalThis.crypto?.randomUUID?.(
     id,
     key,
     name: model.name,
-    upgrades: { engine: 0, gearbox: 0, brakes: 0, suspension: 0 },
+    upgrades: { engine: 0, gearbox: 0, brakes: 0, suspension: 0, aero: 0 },
+    tuning: { downforce: 50, gearRatio: 50, suspension: 50 },
     acquiredAt: Date.now(),
   };
 }
@@ -131,7 +139,11 @@ export function loadLocalState() {
       ...parsed,
       tires: { ...fallback.tires, ...(parsed.tires || {}) },
       shopPurchases: parsed.shopPurchases || {},
-      cars: Array.isArray(parsed.cars) && parsed.cars.length ? parsed.cars : fallback.cars,
+      cars: Array.isArray(parsed.cars) && parsed.cars.length ? parsed.cars.map((car) => ({
+        ...car,
+        upgrades: { ...fallback.cars[0].upgrades, ...(car.upgrades || {}) },
+        tuning: { downforce: 50, gearRatio: 50, suspension: 50, ...(car.tuning || {}) },
+      })) : fallback.cars,
     };
   } catch {
     return initialState();
@@ -179,15 +191,83 @@ export function getCarModel(car) {
 export function getCarStats(car) {
   const model = getCarModel(car);
   const upgrades = car?.upgrades || {};
+  const tuning = car?.tuning || {};
   const engine = upgrades.engine || 0;
   const gearbox = upgrades.gearbox || 0;
   const brakes = upgrades.brakes || 0;
   const suspension = upgrades.suspension || 0;
+  const aero = upgrades.aero || 0;
+  const downforce = Math.max(0, Math.min(100, Number(tuning.downforce ?? 50)));
+  const gearRatio = Math.max(0, Math.min(100, Number(tuning.gearRatio ?? 50)));
+  const suspensionSetup = Math.max(0, Math.min(100, Number(tuning.suspension ?? 50)));
+  const aeroEfficiency = 1 + aero * 0.12;
+  const downforceEffect = ((downforce - 50) / 50) * (14 + aero * 3) * aeroEfficiency;
+  const gearEffect = ((gearRatio - 50) / 50) * 18;
+  const suspensionEffect = ((suspensionSetup - 50) / 50) * 7;
+  const power = model.power + engine * 9 + gearbox * 2;
+  const topSpeed = Math.max(80, Math.round(model.topSpeed + engine * 11 + gearbox * 8 - downforceEffect * 0.9 - gearEffect));
+  const acceleration = Math.max(20, Math.min(120, Math.round(38 + engine * 10 + gearbox * 7 + model.power * 0.25 + gearEffect * 0.7)));
+  const handling = Math.max(20, Math.min(120, Math.round(model.handling + brakes * 2 + suspension * 5 + aero * 3 + downforceEffect * 0.65 + suspensionEffect)));
   return {
-    power: model.power + engine * 9 + gearbox * 2,
-    handling: model.handling + brakes * 2 + suspension * 5,
-    topSpeed: model.topSpeed + engine * 11 + gearbox * 8,
-    acceleration: Math.min(99, Math.round(38 + engine * 10 + gearbox * 7 + model.power * 0.25)),
+    power,
+    handling,
+    topSpeed,
+    acceleration,
+    downforce: Math.round(downforceEffect + downforce),
+    braking: Math.round(58 + brakes * 11),
+    grip: Math.round(45 + handling * 0.55 + downforceEffect * 0.6),
+  };
+}
+
+export function getRacePerformance(car, tireType = 'basic', trackKey = 'coast') {
+  const stats = getCarStats(car);
+  const tire = TIRE_TYPES[tireType] || TIRE_TYPES.basic;
+  const track = TRACKS.find((item) => item.key === trackKey) || TRACKS[0];
+  let terrainGrip = 0;
+  if (track.type === 'offroad') terrainGrip = tireType === 'allterrain' ? 22 : tireType === 'basic' ? -12 : -24;
+  if (track.type === 'mixed') terrainGrip = tireType === 'allterrain' ? 12 : 0;
+  if (track.type === 'asphalt' && tireType === 'soft') terrainGrip = 8;
+  return {
+    ...stats,
+    topSpeed: Math.max(80, stats.topSpeed + tire.speed * 1.35),
+    grip: Math.max(25, stats.grip + tire.grip * 2.2 + terrainGrip),
+    tireGrip: tire.grip,
+    tireSpeed: tire.speed,
+    tireWear: tire.wear,
+    downforce: stats.downforce,
+  };
+}
+
+export function finishDrivenRace(car, tireType, trackKey, elapsedSeconds, telemetry = {}) {
+  const performance = getRacePerformance(car, tireType, trackKey);
+  const track = TRACKS.find((item) => item.key === trackKey) || TRACKS[0];
+  const totalDistance = 2400;
+  const expectedTime = totalDistance / (Math.max(90, performance.topSpeed * 0.76) / 3.6);
+  const trackPenalty = track.type === 'offroad' ? 1.10 : track.type === 'mixed' ? 1.045 : 1;
+  const rivals = [0.88, 0.96, 1.055].map((factor, index) => ({
+    id: `rival-${index + 1}`,
+    time: expectedTime * factor * trackPenalty,
+  }));
+  const place = 1 + rivals.filter((rival) => rival.time < elapsedSeconds).length;
+  const rewards = { 1: 2600, 2: 1750, 3: 1150, 4: 750 };
+  const prize = rewards[place] + Math.max(0, Math.round((performance.handling + performance.acceleration) * 0.8));
+  const crateChance = place === 1 ? 0.48 : place === 2 ? 0.3 : 0.18;
+  return {
+    id: globalThis.crypto?.randomUUID?.() || `race-${Date.now()}`,
+    place,
+    prize,
+    xp: [0, 150, 105, 70, 40][place],
+    crate: Math.random() < crateChance,
+    tireType,
+    track: track.name,
+    time: new Date().toISOString(),
+    duration: Number(elapsedSeconds.toFixed(2)),
+    score: Math.round(Math.max(0, 1000 - elapsedSeconds * 3 + performance.handling)),
+    telemetry: {
+      maxSpeed: Math.round(telemetry.maxSpeed || 0),
+      averageSpeed: Math.round(telemetry.averageSpeed || 0),
+      offroadSeconds: Number((telemetry.offroadSeconds || 0).toFixed(1)),
+    },
   };
 }
 

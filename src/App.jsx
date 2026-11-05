@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CAR_CATALOG,
   TIRE_TYPES,
@@ -9,13 +9,16 @@ import {
   formatCredits,
   getCarModel,
   getCarStats,
+  getRacePerformance,
+  finishDrivenRace,
   getLevel,
   getShopCountdown,
   loadLocalState,
-  runRace,
   saveLocalState,
 } from './game.js';
 import { isSupabaseConfigured } from './supabase.js';
+import DrivingRace from './racing/DrivingRace.jsx';
+import { getRaceSocketUrl } from './racing/network.js';
 
 const NAV_ITEMS = [
   { id: 'race', label: 'Race hub', icon: '◈' },
@@ -45,15 +48,6 @@ function Button({ children, onClick, variant = 'primary', disabled = false, clas
   );
 }
 
-function StatBar({ label, value, max = 100, suffix = '' }) {
-  const pct = Math.max(0, Math.min(100, (value / max) * 100));
-  return (
-    <div className="stat-bar-wrap">
-      <div className="stat-bar-label"><span>{label}</span><strong>{value}{suffix}</strong></div>
-      <div className="stat-bar"><span style={{ width: `${pct}%` }} /></div>
-    </div>
-  );
-}
 
 function TireVisual({ type, small = false }) {
   return (
@@ -74,7 +68,17 @@ function App() {
   const [selectedTrack, setSelectedTrack] = useState('coast');
   const [raceResult, setRaceResult] = useState(null);
   const [raceInProgress, setRaceInProgress] = useState(false);
-  const [racePreview, setRacePreview] = useState(null);
+  const [raceSession, setRaceSession] = useState(null);
+  const raceSessionRef = useRef(null);
+  const socketRef = useRef(null);
+  const onlinePlayerIdRef = useRef(null);
+  const onlinePreparedRef = useRef(null);
+  const [playerName, setPlayerName] = useState('Racer');
+  const [joinCode, setJoinCode] = useState('');
+  const [onlineRoom, setOnlineRoom] = useState(null);
+  const [onlineSnapshot, setOnlineSnapshot] = useState([]);
+  const [onlinePlayerId, setOnlinePlayerId] = useState(null);
+  const [onlineMessage, setOnlineMessage] = useState('Maak een room of join met een code. Maximaal vier racers.');
   const [crateResult, setCrateResult] = useState(null);
   const [countdown, setCountdown] = useState(getShopCountdown());
   const [hourKey, setHourKey] = useState(Math.floor(Date.now() / 3600000));
@@ -87,8 +91,11 @@ function App() {
   const shopOffers = useMemo(() => createShopOffers(hourKey), [hourKey]);
   const selectedTireInfo = TIRE_TYPES[game.selectedTire] || TIRE_TYPES.basic;
   const selectedTrackData = TRACKS.find((track) => track.key === selectedTrack) || TRACKS[0];
+  const raceSessionPerformance = useMemo(() => raceSession ? getRacePerformance(raceSession.car, raceSession.tireType, raceSession.trackKey) : null, [raceSession]);
 
   useEffect(() => saveLocalState(game), [game]);
+
+  useEffect(() => () => { if (socketRef.current && socketRef.current.readyState <= WebSocket.OPEN) socketRef.current.close(); }, []);
 
   useEffect(() => {
     const tick = () => {
@@ -108,17 +115,9 @@ function App() {
 
   const notify = (message) => setToast(message);
 
-  const startRace = () => {
-    if (raceInProgress) return;
-    if ((game.tires[game.selectedTire] || 0) < 1) {
-      notify('Je hebt geen sets van deze band meer. Kies een andere band of bezoek de shop.');
-      setTab('tires');
-      return;
-    }
-    const result = runRace(activeCar, game.selectedTire, selectedTrack);
+  const applyRaceRewards = (result) => {
     setGame((current) => ({
       ...current,
-      tires: { ...current.tires, [current.selectedTire]: Math.max(0, (current.tires[current.selectedTire] || 0) - 1) },
       credits: current.credits + result.prize,
       xp: current.xp + result.xp,
       races: current.races + 1,
@@ -126,13 +125,141 @@ function App() {
       crates: current.crates + (result.crate ? 1 : 0),
       raceLog: [result, ...current.raceLog].slice(0, 8),
     }));
-    setRacePreview(result);
+    setRaceInProgress(false);
+    setRaceSession(null);
+    raceSessionRef.current = null;
+    setRaceResult(result);
+  };
+
+  const finishRace = (telemetry, serverPlace = null, serverTime = null) => {
+    const session = raceSessionRef.current;
+    if (!session) return;
+    const result = finishDrivenRace(session.car, session.tireType, session.trackKey, serverTime ?? telemetry.duration, telemetry);
+    if (serverPlace) {
+      const rewards = { 1: 2600, 2: 1750, 3: 1150, 4: 750 };
+      const sessionStats = getRacePerformance(session.car, session.tireType, session.trackKey);
+      result.place = serverPlace;
+      result.prize = rewards[serverPlace] + Math.round((sessionStats.handling + sessionStats.acceleration) * 0.8);
+      result.xp = [0, 150, 105, 70, 40][serverPlace] || 40;
+      result.score = Math.round(Math.max(0, 1000 - result.duration * 3 + sessionStats.handling));
+    }
+    applyRaceRewards(result);
+  };
+
+  const startRace = () => {
+    if (raceInProgress) return;
+    if ((game.tires[game.selectedTire] || 0) < 1) {
+      notify('Je hebt geen sets van deze band meer. Kies een andere band of bezoek de shop.');
+      setTab('tires');
+      return;
+    }
+    const session = { car: activeCar, tireType: game.selectedTire, trackKey: selectedTrack, multiplayer: false };
+    raceSessionRef.current = session;
+    setRaceSession(session);
+    setGame((current) => ({ ...current, tires: { ...current.tires, [current.selectedTire]: Math.max(0, (current.tires[current.selectedTire] || 0) - 1) } }));
+    setRaceResult(null);
     setRaceInProgress(true);
-    window.setTimeout(() => {
-      setRaceInProgress(false);
-      setRacePreview(null);
-      setRaceResult(result);
-    }, 2600);
+  };
+
+  const handleOnlineMessage = (event) => {
+    let message;
+    try { message = JSON.parse(event.data); } catch { return; }
+    if (message.type === 'connected') { onlinePlayerIdRef.current = message.playerId; setOnlinePlayerId(message.playerId); }
+    if (message.type === 'room_created' || message.type === 'room_joined') {
+      setOnlineRoom(message.room);
+      onlinePlayerIdRef.current = message.playerId;
+      setOnlinePlayerId(message.playerId);
+      setOnlineMessage(`Room ${message.room.code} is klaar. Deel de code met je vrienden.`);
+      setOnlineSnapshot([]);
+    }
+    if (message.type === 'room_update') setOnlineRoom(message.room);
+    if (message.type === 'race_countdown') {
+      setOnlineRoom(message.room);
+      setOnlineMessage('Race start over 3 seconden. Maak je klaar!');
+    }
+    if (message.type === 'race_started') {
+      const prepared = onlinePreparedRef.current || { car: activeCar, tireType: game.selectedTire, trackKey: message.room.trackKey || selectedTrack };
+      const session = { ...prepared, trackKey: message.room.trackKey || prepared.trackKey, multiplayer: true };
+      raceSessionRef.current = session;
+      setRaceSession(session);
+      setGame((current) => ({ ...current, tires: { ...current.tires, [session.tireType]: Math.max(0, (current.tires[session.tireType] || 0) - 1) } }));
+      setRaceInProgress(true);
+      setOnlineMessage('Je rijdt live op de multiplayer-server.');
+    }
+    if (message.type === 'race_state') setOnlineSnapshot(message.players || []);
+    if (message.type === 'race_finished') {
+      setOnlineRoom(message.room);
+      const me = (message.ranking || []).find((racer) => racer.id === onlinePlayerIdRef.current);
+      if (me) finishRace({ duration: me.time, maxSpeed: 0, averageSpeed: 0, offroadSeconds: 0 }, me.place, me.time);
+      setOnlineMessage(me ? `Finish! Je eindigde op plek ${me.place}.` : 'De multiplayer-race is afgelopen.');
+      setOnlineSnapshot([]);
+    }
+    if (message.type === 'error') {
+      setOnlineMessage(message.message || 'Multiplayer-fout.');
+      notify(message.message || 'Multiplayer-fout.');
+    }
+    if (message.type === 'room_left') setOnlineRoom(null);
+  };
+
+  const connectOnline = (payload) => {
+    const existing = socketRef.current;
+    if (existing && existing.readyState === WebSocket.OPEN) {
+      existing.send(JSON.stringify(payload));
+      return;
+    }
+    if (existing && existing.readyState === WebSocket.CONNECTING) {
+      setOnlineMessage('Verbinding wordt opgezet… probeer zo nog een keer.');
+      return;
+    }
+    const socket = new WebSocket(getRaceSocketUrl());
+    socketRef.current = socket;
+    socket.onopen = () => socket.send(JSON.stringify(payload));
+    socket.onmessage = handleOnlineMessage;
+    socket.onerror = () => setOnlineMessage('Server niet bereikbaar. Start de Render race-server of controleer de verbinding.');
+    socket.onclose = () => { if (socketRef.current === socket) socketRef.current = null; };
+    setOnlineMessage('Verbinden met de race-server…');
+  };
+
+  const hostOnlineRace = () => {
+    if ((game.tires[game.selectedTire] || 0) < 1) return notify('Je hebt minstens één bandenset nodig.');
+    onlinePreparedRef.current = { car: activeCar, tireType: game.selectedTire, trackKey: selectedTrack };
+    connectOnline({ type: 'room_create', playerName, trackKey: selectedTrack, stats: getRacePerformance(activeCar, game.selectedTire, selectedTrack) });
+  };
+
+  const joinOnlineRace = () => {
+    if (!joinCode.trim()) return notify('Vul eerst een roomcode in.');
+    if ((game.tires[game.selectedTire] || 0) < 1) return notify('Je hebt minstens één bandenset nodig.');
+    onlinePreparedRef.current = { car: activeCar, tireType: game.selectedTire, trackKey: selectedTrack };
+    connectOnline({ type: 'room_join', code: joinCode, playerName, trackKey: selectedTrack, stats: getRacePerformance(activeCar, game.selectedTire, selectedTrack) });
+  };
+
+  const startOnlineRace = () => {
+    if (!onlineRoom || !socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) return;
+    socketRef.current.send(JSON.stringify({ type: 'race_start' }));
+  };
+
+  const sendOnlineControls = (controls) => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify({ type: 'race_input', controls }));
+  };
+
+  const leaveOnlineRoom = () => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ type: 'room_leave' }));
+      socketRef.current.close();
+    }
+    setOnlineRoom(null);
+    onlinePreparedRef.current = null;
+    setOnlineSnapshot([]);
+    setOnlineMessage('Je hebt de race-room verlaten.');
+  };
+
+  const tuneCar = (key, value) => {
+    setGame((current) => ({
+      ...current,
+      cars: current.cars.map((car) => car.id === activeCar.id
+        ? { ...car, tuning: { downforce: 50, gearRatio: 50, suspension: 50, ...(car.tuning || {}), [key]: value } }
+        : car),
+    }));
   };
 
   const buyOffer = (offer) => {
@@ -245,7 +372,7 @@ function App() {
             <div className="mini-progress"><span style={{ width: `${Math.min(100, level.progress)}%` }} /></div>
             <div className="mini-card-foot"><span>LEVEL {level.level}</span><span>{level.current}/500 XP</span></div>
           </div>
-          <div className="sidebar-footer">APEX RUSH <span>BUILD 0.1.0</span></div>
+          <div className="sidebar-footer">APEX RUSH <span>BUILD 0.2.0</span></div>
         </div>
       </aside>
 
@@ -313,6 +440,12 @@ function App() {
               </div>
               <div className="prep-action"><Button onClick={startRace} disabled={raceInProgress || (game.tires[game.selectedTire] || 0) < 1}>{raceInProgress ? 'RACE BEZIG…' : 'START RACE'} <span>→</span></Button><small>{selectedTrackData.name} · {selectedTrackData.label}</small></div>
             </section>
+            <section className="multiplayer-panel">
+              <div className="multiplayer-heading"><div><div className="eyebrow">ONLINE GRID / UP TO 4 DRIVERS</div><h2>RACE <em>TOGETHER.</em></h2><p>De server verwerkt stuurinput en raceposities; deel een roomcode om samen te starten.</p></div><span className="server-status"><i /> RACE SERVER</span></div>
+              <div className="multiplayer-actions"><label>JOUW RACERNAAM<input value={playerName} maxLength={18} onChange={(event) => setPlayerName(event.target.value)} /></label><button className="btn btn-primary" onClick={hostOnlineRace} disabled={raceInProgress || Boolean(onlineRoom)}>HOST RACE ↗</button><label>ROOM CODE<input value={joinCode} maxLength={6} placeholder="ABC123" onChange={(event) => setJoinCode(event.target.value.toUpperCase())} /></label><button className="btn btn-outline" onClick={joinOnlineRace} disabled={raceInProgress || Boolean(onlineRoom)}>JOIN RACE ↗</button></div>
+              <div className="multiplayer-status"><span>{onlineMessage}</span>{onlineRoom && <><strong>ROOM {onlineRoom.code}</strong><b>{onlineRoom.players?.length || 1}/4 PLAYERS</b><b>TRACK {onlineRoom.trackKey?.toUpperCase()}</b></>}</div>
+              {onlineRoom && <div className="multiplayer-room"><div className="room-player-list">{onlineRoom.players?.map((player) => <div key={player.id}><span className="room-player-dot" />{player.name}{player.id === onlineRoom.hostId && <small>HOST</small>}</div>)}</div><div className="room-controls">{onlineRoom.hostId === onlinePlayerId && <button className="btn btn-primary" onClick={startOnlineRace} disabled={onlineRoom.players?.length < 2 || onlineRoom.status !== 'lobby'}>START ONLINE RACE →</button>}<button className="btn btn-outline" onClick={leaveOnlineRoom}>LEAVE ROOM</button></div></div>}
+            </section>
           </>
         )}
 
@@ -342,6 +475,15 @@ function App() {
           <>
             <section className="page-heading"><div><div className="eyebrow"><span className="eyebrow-line" />TUNE YOUR MACHINE</div><h1>THE <em>WORKSHOP</em></h1><p>Installeer onderdelen. Iedere auto heeft zijn eigen upgrade-levels.</p></div><div className="workshop-car-chip"><CarImage car={activeCar} /><div><small>NU GESELECTEERD</small><strong>{activeCar.name}</strong></div></div></section>
             <section className="workshop-hero"><div className="workshop-hero-art"><CarImage car={activeCar} /><div className="workshop-orbit orbit-one" /><div className="workshop-orbit orbit-two" /></div><div className="workshop-hero-copy"><span className="feature-class">{activeModel.class} / ACTIVE BUILD</span><h2>{activeCar.name}</h2><p>Alle onderdelen hieronder worden alleen op deze auto geïnstalleerd.</p><div className="workshop-summary"><span><b>{activeStats.power}</b> POWER</span><span><b>{activeStats.acceleration}</b> ACCEL.</span><span><b>{activeStats.handling}</b> HANDLING</span></div></div></section>
+            <section className="setup-tuning-panel">
+              <div className="setup-tuning-heading"><div><div className="eyebrow">LIVE VEHICLE DYNAMICS</div><h2>RACE <em>SETUP</em></h2><p>Schuif de balans. Iedere instelling verandert hoe je auto rijdt.</p></div><span>BUILD / {activeModel.key.toUpperCase()}</span></div>
+              <div className="setup-stat-grid"><div><small>MAXIMALE SNELHEID</small><strong>{activeStats.topSpeed}<i>KM/H</i></strong><span>↓ bij meer downforce</span></div><div><small>BOCHTENGRIP</small><strong>{activeStats.handling}<i>/ 120</i></strong><span>↑ met downforce en ophanging</span></div><div><small>ACCELERATIE</small><strong>{activeStats.acceleration}<i>/ 120</i></strong><span>↑ met kortere gearing</span></div></div>
+              <div className="setup-slider-grid">
+                <label className="setup-slider"><span><b>DOWNFORCE</b><strong>{activeCar.tuning?.downforce ?? 50}%</strong></span><input type="range" min="0" max="100" value={activeCar.tuning?.downforce ?? 50} onChange={(event) => tuneCar('downforce', Number(event.target.value))} /><small>Meer downforce = betere bochten, minder rechte-stuk snelheid.</small></label>
+                <label className="setup-slider"><span><b>VERSNELLINGSVERHOUDING</b><strong>{activeCar.tuning?.gearRatio ?? 50}%</strong></span><input type="range" min="0" max="100" value={activeCar.tuning?.gearRatio ?? 50} onChange={(event) => tuneCar('gearRatio', Number(event.target.value))} /><small>Lang = hogere topsnelheid. Kort = sneller accelereren.</small></label>
+                <label className="setup-slider"><span><b>OPHANGING STIJFHEID</b><strong>{activeCar.tuning?.suspension ?? 50}%</strong></span><input type="range" min="0" max="100" value={activeCar.tuning?.suspension ?? 50} onChange={(event) => tuneCar('suspension', Number(event.target.value))} /><small>Stijver reageert directer en geeft meer stabiliteit in snelle bochten.</small></label>
+              </div>
+            </section>
             <div className="section-title-row"><div><div className="eyebrow">PERFORMANCE PARTS</div><h2>UPGRADE <em>STATIONS</em></h2></div><span className="muted-label">{Object.values(activeCar.upgrades).reduce((sum, value) => sum + value, 0)} UPGRADES GEÏNSTALLEERD</span></div>
             <section className="upgrade-grid">
               {Object.entries(UPGRADE_PARTS).map(([key, part]) => {
@@ -433,9 +575,9 @@ function App() {
 
       {toast && <div className="toast"><span>✓</span>{toast}</div>}
 
-      {raceInProgress && racePreview && <div className="modal-backdrop race-backdrop"><section className="live-race-modal"><div className="race-live-heading"><span><i /> LIVE RACE / {racePreview.track.toUpperCase()}</span><b>APX-{String(game.races).padStart(4, '0')}</b></div><h2>FULL <em>THROTTLE.</em></h2><p>Je ligt op de grid. De finish komt eraan…</p><div className="live-track-scene"><div className="live-track-sky" /><div className="live-track-horizon" /><div className="live-track-road"><div className="road-stripes" /><div className="race-lane lane-one"><span>RIVAL 02</span><div className="opponent-car" /></div><div className="race-lane lane-two"><span>YOU / {activeCar.name.toUpperCase()}</span><CarImage car={activeCar} className="live-car-player" /></div><div className="race-lane lane-three"><span>RIVAL 01</span><div className="opponent-car opponent-blue" /></div></div><div className="finish-line" /></div><div className="live-race-bottom"><span>ENGINE LOADED</span><div className="race-progress-track"><i /></div><b>RACING</b></div></section></div>}
+      {raceInProgress && raceSession && <DrivingRace key={`${raceSession.multiplayer ? 'online' : 'solo'}-${raceSession.trackKey}`} car={raceSession.car} performance={raceSessionPerformance} trackKey={raceSession.trackKey} trackName={TRACKS.find((track) => track.key === raceSession.trackKey)?.name || 'Circuit'} multiplayer={raceSession.multiplayer} multiplayerSnapshot={onlineSnapshot} playerId={onlinePlayerId} onControls={sendOnlineControls} onFinish={finishRace} onExit={() => { if (raceSession.multiplayer) leaveOnlineRoom(); setRaceInProgress(false); setRaceSession(null); raceSessionRef.current = null; setOnlineMessage('Je hebt de race verlaten.'); }} />}
 
-      {raceResult && <div className="modal-backdrop" onClick={() => setRaceResult(null)}><section className="result-modal" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setRaceResult(null)}>×</button><div className="result-kicker">RACE COMPLETED / {raceResult.track}</div><div className={`result-place place-${raceResult.place}`}>{raceResult.place === 1 ? '1ST' : `${raceResult.place}TH`}</div><h2>{raceResult.place === 1 ? 'ABSOLUTE PODIUM.' : raceResult.place === 2 ? 'GREAT DRIVE.' : raceResult.place === 3 ? 'KEEP PUSHING.' : 'THE NEXT ONE IS YOURS.'}</h2><p>Je finishte op plek {raceResult.place} met een race score van {raceResult.score}.</p><div className="result-rewards"><div><span>PRIZE MONEY</span><strong>+{formatCredits(raceResult.prize)}</strong></div><div><span>EXPERIENCE</span><strong>+{raceResult.xp} XP</strong></div><div><span>CRATE DROP</span><strong>{raceResult.crate ? 'YES ✦' : 'NO'}</strong></div></div>{raceResult.crate && <div className="crate-earned">✦ Je hebt een crate verdiend. Check je crate inventory.</div>}<Button onClick={() => setRaceResult(null)}>TERUG NAAR DE GRID <span>→</span></Button></section></div>}
+      {raceResult && <div className="modal-backdrop" onClick={() => setRaceResult(null)}><section className="result-modal" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setRaceResult(null)}>×</button><div className="result-kicker">RACE COMPLETED / {raceResult.track}</div><div className={`result-place place-${raceResult.place}`}>{raceResult.place === 1 ? '1ST' : `${raceResult.place}TH`}</div><h2>{raceResult.place === 1 ? 'ABSOLUTE PODIUM.' : raceResult.place === 2 ? 'GREAT DRIVE.' : raceResult.place === 3 ? 'KEEP PUSHING.' : 'THE NEXT ONE IS YOURS.'}</h2><p>Je finishte op plek {raceResult.place} in {raceResult.duration ? `${raceResult.duration.toFixed(1)} seconden` : `met een race score van ${raceResult.score}`}.</p><div className="race-result-telemetry"><span>TOP SPEED <b>{raceResult.telemetry?.maxSpeed || '—'} KM/H</b></span><span>AVG SPEED <b>{raceResult.telemetry?.averageSpeed || '—'} KM/H</b></span><span>OFFROAD <b>{raceResult.telemetry?.offroadSeconds ?? '—'} SEC</b></span></div><div className="result-rewards"><div><span>PRIZE MONEY</span><strong>+{formatCredits(raceResult.prize)}</strong></div><div><span>EXPERIENCE</span><strong>+{raceResult.xp} XP</strong></div><div><span>CRATE DROP</span><strong>{raceResult.crate ? 'YES ✦' : 'NO'}</strong></div></div>{raceResult.crate && <div className="crate-earned">✦ Je hebt een crate verdiend. Check je crate inventory.</div>}<Button onClick={() => setRaceResult(null)}>TERUG NAAR DE GRID <span>→</span></Button></section></div>}
 
       {crateResult && <div className="modal-backdrop" onClick={() => setCrateResult(null)}><section className="result-modal crate-result-modal" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setCrateResult(null)}>×</button><div className="result-kicker">APEX CRATE / REWARD UNLOCKED</div><div className={`crate-result-icon reward-${crateResult.type}`}>{crateResult.type === 'credits' ? '◈' : '◉'}</div><div className={`rarity-badge rarity-${crateResult.type === 'credits' ? 'basic' : crateResult.type}`}>{crateResult.title}</div><h2>{crateResult.description}</h2><p>Je beloning is direct toegevoegd aan je lokale account.</p><Button onClick={() => setCrateResult(null)}>NICE. TERUG NAAR CRATES <span>→</span></Button></section></div>}
     </div>

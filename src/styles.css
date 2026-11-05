@@ -605,3 +605,115 @@ h1, h2, h3, p { margin-top: 0; }
   .live-race-modal h2 { font-size: 28px; }
   .live-race-bottom { gap: 7px; font-size: 6px; }
 }
+
+/* Live driving + connected race rooms */
+.setup-tuning-panel, .multiplayer-panel { margin: 14px 0 18px; padding: 17px; border: 1px solid var(--line); border-radius: 5px; background: linear-gradient(125deg, rgba(25,37,48,.96), rgba(16,24,32,.96)); }
+.setup-tuning-heading, .multiplayer-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.setup-tuning-heading h2, .multiplayer-heading h2 { margin: 5px 0 4px; font: 900 25px/.95 var(--font-display); letter-spacing: .7px; }
+.setup-tuning-heading h2 em, .multiplayer-heading h2 em { color: var(--orange); font-style: normal; }
+.setup-tuning-heading p, .multiplayer-heading p { margin: 0; color: #85929d; font-size: 9px; line-height: 1.5; }
+.setup-tuning-heading > span { color: #74828d; font-size: 8px; font-weight: 800; letter-spacing: 1px; }
+.setup-stat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin: 15px 0; }
+.setup-stat-grid > div { min-width: 0; display: grid; gap: 4px; padding: 10px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.018); }
+.setup-stat-grid small { color: #788692; font-size: 7px; font-weight: 800; letter-spacing: .9px; }
+.setup-stat-grid strong { font: 800 25px/.95 var(--font-display); }
+.setup-stat-grid strong i { margin-left: 4px; color: #82919c; font: 700 8px Arial,sans-serif; }
+.setup-stat-grid span { color: #788994; font-size: 7px; }
+.setup-slider-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; }
+.setup-slider { display: grid; gap: 9px; }
+.setup-slider > span { display: flex; justify-content: space-between; gap: 8px; color: #cbd3d9; font-size: 8px; letter-spacing: .6px; }
+.setup-slider > span b { font-size: 7px; letter-spacing: .9px; }
+.setup-slider > span strong { color: var(--orange); font: 800 12px var(--font-display); }
+.setup-slider input { width: 100%; accent-color: var(--orange); cursor: pointer; }
+.setup-slider small { min-height: 25px; color: #788792; font-size: 8px; line-height: 1.4; }
+.server-status { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid rgba(98,214,161,.2); color: #76d6a6; font-size: 7px; font-weight: 800; letter-spacing: .9px; white-space: nowrap; }
+.server-status i, .room-player-dot { width: 6px; height: 6px; border-radius: 50%; background: #62d6a1; box-shadow: 0 0 8px rgba(98,214,161,.65); }
+.multiplayer-actions { display: grid; grid-template-columns: 1.25fr auto 1fr auto; align-items: end; gap: 9px; margin-top: 16px; }
+.multiplayer-actions label { min-width: 0; display: grid; gap: 6px; color: #87949e; font-size: 7px; font-weight: 800; letter-spacing: .8px; }
+.multiplayer-actions input { width: 100%; min-width: 0; height: 36px; padding: 0 10px; color: #edf1f5; border: 1px solid rgba(198,213,229,.16); border-radius: 3px; background: #0c131a; outline: none; font: 700 11px var(--font-display); letter-spacing: 1px; }
+.multiplayer-actions input:focus { border-color: var(--orange); }
+.multiplayer-actions .btn { min-height: 36px; padding: 0 10px; font-size: 7px; }
+.multiplayer-status { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; color: #85929c; font-size: 8px; }
+.multiplayer-status > span { flex: 1; min-width: 160px; }
+.multiplayer-status strong { color: var(--orange); font: 800 14px var(--font-display); letter-spacing: 1px; }
+.multiplayer-status b { color: #c8d2d9; font-size: 8px; }
+.multiplayer-room { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; padding: 10px; border: 1px solid rgba(98,214,161,.15); background: rgba(98,214,161,.035); }
+.room-player-list { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.room-player-list > div { display: flex; align-items: center; gap: 6px; color: #d3dce2; font-size: 9px; }
+.room-player-list small { color: #ff986b; font-size: 6px; font-weight: 800; letter-spacing: .7px; }
+.room-controls { display: flex; gap: 7px; }
+.room-controls .btn { min-height: 31px; padding: 0 9px; font-size: 7px; }
+
+.drive-overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 14px; background: rgba(4,8,12,.91); backdrop-filter: blur(12px); }
+.drive-panel { width: min(1140px,100%); max-height: calc(100vh - 28px); overflow: auto; border: 1px solid rgba(204,220,232,.18); border-radius: 7px; background: #101820; box-shadow: 0 24px 100px rgba(0,0,0,.6); }
+.drive-header { min-height: 43px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px; border-bottom: 1px solid var(--line); color: #b4c0c8; font-size: 8px; font-weight: 800; letter-spacing: 1.2px; }
+.drive-header > div:first-child { display: flex; align-items: center; gap: 8px; }
+.drive-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #ff6445; box-shadow: 0 0 10px #ff6445; }
+.drive-header-right { display: flex; align-items: center; gap: 16px; color: #798894; }
+.drive-header-right button { padding: 6px 0; color: #ff9a76; border: 0; background: transparent; font-size: 7px; font-weight: 800; cursor: pointer; }
+.drive-hud { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--line); border-bottom: 1px solid var(--line); }
+.drive-hud > div { display: grid; gap: 4px; padding: 9px 15px; background: #131e27; }
+.drive-hud small { color: #72808c; font-size: 7px; font-weight: 800; letter-spacing: 1px; }
+.drive-hud strong { font: 900 22px/.95 var(--font-display); }
+.drive-hud strong i { margin-left: 5px; color: #87949f; font: 700 7px Arial,sans-serif; }
+.drive-hud > div:first-child strong { color: var(--orange); }
+.drive-canvas-wrap { height: clamp(260px, 43vw, 450px); position: relative; overflow: hidden; background: #273b3c; }
+.drive-canvas { display: block; width: 100%; height: 100%; }
+.drive-speed-ring { position: absolute; top: 13px; left: 14px; width: 52px; height: 52px; display: grid; align-content: center; justify-items: center; gap: 1px; border: 1px solid rgba(255,255,255,.27); border-radius: 50%; background: rgba(11,18,24,.68); box-shadow: 0 4px 20px rgba(0,0,0,.25); }
+.drive-speed-ring span { color: #95a2aa; font-size: 6px; font-weight: 800; letter-spacing: .8px; }
+.drive-speed-ring strong { font: 900 19px/.9 var(--font-display); }
+.drive-distance { position: absolute; right: 14px; bottom: 12px; width: min(270px,43%); display: grid; gap: 5px; padding: 8px 10px; background: rgba(11,17,22,.75); border: 1px solid rgba(255,255,255,.14); }
+.drive-distance span { color: #9aa7af; font-size: 6px; font-weight: 800; letter-spacing: 1px; }
+.drive-distance b { color: #fff; font: 700 13px var(--font-display); }
+.drive-distance > div { height: 4px; overflow: hidden; background: #39444b; }
+.drive-distance i { height: 100%; display: block; background: linear-gradient(90deg,#f15d32,#ffc078); }
+.drive-help { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; width: min(540px,86%); padding: 15px; color: #d5dde2; background: rgba(9,15,20,.86); border: 1px solid rgba(255,255,255,.2); text-align: center; box-shadow: 0 8px 35px rgba(0,0,0,.3); }
+.drive-help b { width: 100%; color: var(--orange); font-size: 9px; letter-spacing: 1.4px; }
+.drive-help span { padding: 5px 7px; border: 1px solid rgba(255,255,255,.12); font-size: 8px; }
+.drive-help span:last-child { width: 100%; color: #9daab3; border: 0; }
+.drive-controls { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 11px 15px; border-top: 1px solid var(--line); background: #121c25; }
+.drive-steering, .drive-pedals { display: flex; align-items: center; gap: 7px; }
+.drive-steering small { margin-left: 5px; color: #798894; font-size: 7px; font-weight: 800; letter-spacing: .8px; }
+.drive-controls button { min-width: 48px; min-height: 39px; border: 1px solid rgba(255,255,255,.15); border-radius: 4px; color: #edf2f5; background: #1e2b35; font: 800 15px var(--font-display); touch-action: none; cursor: pointer; user-select: none; }
+.drive-controls button:active { transform: translateY(1px); border-color: var(--orange); background: #293945; }
+.drive-pedals .brake-pedal { color: #f0a5a0; background: #332324; }
+.drive-pedals .gas-pedal { min-width: 88px; color: #1a1512; border-color: transparent; background: linear-gradient(100deg,#ff6d37,#ff9950); }
+.drive-footer { display: flex; justify-content: space-between; gap: 12px; padding: 10px 15px; color: #71818d; font-size: 7px; font-weight: 800; letter-spacing: .8px; }
+.race-result-telemetry { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin: 13px 0; }
+.race-result-telemetry span { display: grid; gap: 5px; padding: 9px; color: #7c8993; border: 1px solid var(--line); font-size: 7px; letter-spacing: .7px; }
+.race-result-telemetry b { color: #e8edf0; font: 700 14px var(--font-display); }
+
+@media (max-width: 1000px) {
+  .setup-slider-grid { grid-template-columns: 1fr; gap: 12px; }
+  .multiplayer-actions { grid-template-columns: 1fr auto; }
+}
+@media (max-width: 700px) {
+  .setup-tuning-panel, .multiplayer-panel { padding: 12px; }
+  .setup-tuning-heading h2, .multiplayer-heading h2 { font-size: 22px; }
+  .setup-stat-grid { gap: 5px; }
+  .setup-stat-grid > div { padding: 7px; }
+  .setup-stat-grid strong { font-size: 20px; }
+  .setup-stat-grid small { font-size: 6px; }
+  .multiplayer-actions { grid-template-columns: 1fr 1fr; }
+  .multiplayer-actions label { grid-column: span 1; }
+  .multiplayer-actions .btn { width: 100%; }
+  .multiplayer-room { align-items: start; flex-direction: column; }
+  .room-controls { width: 100%; }
+  .room-controls .btn { flex: 1; }
+  .drive-overlay { padding: 0; }
+  .drive-panel { width: 100%; max-height: 100vh; min-height: 100vh; border-radius: 0; }
+  .drive-header { min-height: 38px; padding: 0 10px; font-size: 6px; }
+  .drive-header-right { gap: 7px; }
+  .drive-header-right > span { display: none; }
+  .drive-hud > div { padding: 8px 7px; }
+  .drive-hud small { font-size: 6px; }
+  .drive-hud strong { font-size: 18px; }
+  .drive-canvas-wrap { height: 48vh; min-height: 260px; }
+  .drive-controls { padding: 10px; }
+  .drive-controls button { min-width: 54px; min-height: 48px; }
+  .drive-pedals .gas-pedal { min-width: 85px; }
+  .drive-footer { flex-wrap: wrap; font-size: 6px; }
+  .drive-footer span:last-child { display: none; }
+  .drive-help { width: 90%; padding: 9px; gap: 4px; }
+  .drive-help span { font-size: 7px; padding: 4px; }
+}

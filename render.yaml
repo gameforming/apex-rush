@@ -1,10 +1,14 @@
 services:
   - type: web
     name: apex-rush
-    runtime: static
+    runtime: node
+    plan: free
     buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
+    startCommand: npm start
+    healthCheckPath: /health
     envVars:
+      - key: NODE_VERSION
+        value: 22.16.0
       - key: VITE_SUPABASE_URL
         sync: false
       - key: VITE_SUPABASE_ANON_KEY

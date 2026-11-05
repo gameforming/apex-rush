@@ -83,12 +83,14 @@ export const UPGRADE_PARTS = {
   },
 };
 
+const CAR_ASSETS_BASE = `${import.meta.env?.BASE_URL ?? '/'}assets/cars/`;
+
 export const CAR_CATALOG = [
-  { key: 'starter', name: 'Nova R1', class: 'STREET', price: 0, power: 54, handling: 57, topSpeed: 182, image: '/assets/cars/nova-r1.svg', color: 'orange', tagline: 'Jouw eerste stap naar de grid.' },
-  { key: 'coupe', name: 'Vortex S', class: 'SPORT', price: 18000, power: 68, handling: 65, topSpeed: 226, image: '/assets/cars/vortex-s.svg', color: 'blue', tagline: 'Licht, scherp en gebouwd voor bochten.' },
-  { key: 'rally', name: 'Rally XR', class: 'RALLY', price: 32000, power: 64, handling: 78, topSpeed: 205, image: '/assets/cars/rally-xr.svg', color: 'green', tagline: 'Grip waar het asfalt ophoudt.' },
-  { key: 'gt', name: 'Apex GT-R', class: 'SUPER', price: 54000, power: 82, handling: 72, topSpeed: 286, image: '/assets/cars/apex-gtr.svg', color: 'red', tagline: 'Pure snelheid. Geen excuses.' },
-  { key: 'hyper', name: 'Zenith X', class: 'HYPER', price: 89000, power: 96, handling: 84, topSpeed: 338, image: '/assets/cars/zenith-x.svg', color: 'purple', tagline: 'Het absolute topsegment.' },
+  { key: 'starter', name: 'Nova R1', class: 'STREET', price: 0, power: 54, handling: 57, topSpeed: 182, image: `${CAR_ASSETS_BASE}nova-r1.svg`, color: 'orange', tagline: 'Jouw eerste stap naar de grid.' },
+  { key: 'coupe', name: 'Vortex S', class: 'SPORT', price: 18000, power: 68, handling: 65, topSpeed: 226, image: `${CAR_ASSETS_BASE}vortex-s.svg`, color: 'blue', tagline: 'Licht, scherp en gebouwd voor bochten.' },
+  { key: 'rally', name: 'Rally XR', class: 'RALLY', price: 32000, power: 64, handling: 78, topSpeed: 205, image: `${CAR_ASSETS_BASE}rally-xr.svg`, color: 'green', tagline: 'Grip waar het asfalt ophoudt.' },
+  { key: 'gt', name: 'Apex GT-R', class: 'SUPER', price: 54000, power: 82, handling: 72, topSpeed: 286, image: `${CAR_ASSETS_BASE}apex-gtr.svg`, color: 'red', tagline: 'Pure snelheid. Geen excuses.' },
+  { key: 'hyper', name: 'Zenith X', class: 'HYPER', price: 89000, power: 96, handling: 84, topSpeed: 338, image: `${CAR_ASSETS_BASE}zenith-x.svg`, color: 'purple', tagline: 'Het absolute topsegment.' },
 ];
 
 export const TRACKS = [

@@ -2,6 +2,10 @@
 
 Een browser-based racing game met een donker motorsport-dashboard, bestuurbare 2D-races, auto-afstelling en een Node/WebSocket-raceserver. De lokale game-save wordt in `localStorage` bewaard.
 
+## Installatiehandleiding
+
+Voor de volledige klik-voor-klik installatie: open [HANDLEIDING-NL.md](HANDLEIDING-NL.md).
+
 ## Wat zit erin?
 
 - **Driving mode:** bestuur de auto live met W/A/S/D of pijltjestoetsen. Op mobiel staan stuur-, gas- en remknoppen in beeld. Drie ronden, snelheid, afstand, rondeteller en rijtijd worden tijdens de race bijgehouden.
@@ -68,3 +72,10 @@ npm test
 ```
 
 De tests controleren onder meer dat downforce en gearing de verwachte trade-offs geven, banden race-statistieken veranderen en de racephysics de finish kan bereiken.
+
+
+## GitHub Pages (frontend preview)
+
+GitHub Pages can host the built static frontend, but it cannot run the Node.js/WebSocket multiplayer server. The repository includes `.github/workflows/deploy-pages.yml`: push to `main`, then open **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**. The workflow runs `npm install`, `npm run build`, and publishes `dist/`. Vite uses relative asset paths so project-repository URLs work.
+
+For multiplayer from the Pages frontend, first deploy the Node service on Render and add a repository Actions variable named `VITE_RACE_SERVER_URL` with the Render service URL (for example `https://apex-rush.onrender.com`, without a trailing slash). Without that variable, single-player works but multiplayer has no server endpoint.
